@@ -1,6 +1,12 @@
 pipeline {
-
     agent any
+   /* environment {
+        NEXUS_VERSION = "nexus3"
+        NEXUS_PROTOCOL = "http"
+        NEXUS_URL = "3.101.63.223:8081"
+        NEXUS_REPOSITORY = "javajee"
+        NEXUS_CREDENTIAL_ID = "nexus"
+    }*/
  stages {
     
     stage('git clone') {
@@ -8,35 +14,7 @@ pipeline {
         git branch: 'main', credentialsId: 'jenkins', url: 'git@gitlab.com:Aguerbaoui/projet_j2e.git'
         }
     }
-   
-//    stage("SAST") {
-//         steps{
-//                 withSonarQubeEnv(installationName: 'sonarqube', credentialsId: 'sonar') { 
-//                  withMaven(maven: 'Maven') {
-//                         sh 'mvn clean package sonar:sonar'
-//               }
-//         }
-//         }
-//        }
 
-   /* stage('SAST SonarQube') {
-         steps {
-         withMaven(maven: 'Maven') {
-         sh '''mvn clean verify sonar:sonar \\
-                 -Dsonar.projectKey=MyFirstProject \\
-                 -Dsonar.host.url=http://3.101.76.18:9000 \\
-                 -Dsonar.login=sqp_50f29b62e01efbbfcf108139b4c45a4c8661892c'''
-    }
-         }
-    }*/
-  /*  stage('Quality Gate') {
-        steps {
-
-            waitForQualityGate abortPipeline: true, credentialsId: 'sonar'
-        }
-
-    }
-    */
     stage('Build') {
         steps {
             withMaven(maven: 'Maven') {
@@ -45,74 +23,29 @@ pipeline {
         }
     }
 
-
-            steps {
-                script {
-                    pom = readMavenPom file: "pom.xml";
-                    filesByGlob = findFiles(glob: "target/*.${pom.packaging}");
-                    echo "${filesByGlob[0].name} ${filesByGlob[0].path} ${filesByGlob[0].directory} ${filesByGlob[0].length} ${filesByGlob[0].lastModified}"
-                    artifactPath = filesByGlob[0].path;
-                    artifactExists = fileExists artifactPath;
-                    if(artifactExists) {
-                        echo "*** File: ${artifactPath}, group: ${pom.groupId}, packaging: ${pom.packaging}, version ${pom.version}";
-                        nexusArtifactUploader(
-                            nexusVersion: NEXUS_VERSION,
-                            protocol: NEXUS_PROTOCOL,
-                            nexusUrl: NEXUS_URL,
-                            groupId: pom.groupId,
-                            version: pom.version,
-                            repository: NEXUS_REPOSITORY,
-                            credentialsId: NEXUS_CREDENTIAL_ID,
-                            artifacts: [
-                                [artifactId: pom.artifactId,
-                                classifier: '',
-                                file: artifactPath,
-                                type: pom.packaging],
-                                [artifactId: pom.artifactId,
-                                classifier: '',
-                                file: "pom.xml",
-                                type: "pom"]
-                            ]
-                        );
-                    } else {
-                        error "*** File: ${artifactPath}, could not be found";
-                    }
-                }
-            }
-        }
-
-
-
-
 stage('upload_artifact_to_nexus') {
     steps{
         script{
             def mavenpom = readMavenPom file: 'pom.xml'
-            //defines a variable called "nexusRepoName" with a value that depends on the value of the "mavenpom.version"
-            // variable. If the value of "mavenpom.version" ends with "SNAPSHOT", then the value of "nexusRepoName" will be "Project_JEE-SNAPSHOT". 
-            //Otherwise, the value of "nexusRepoName" will be "Project_JEE".
-            def nexusRepoName = mavenpom.version.endsWith("SNAPSHOT") ? "Project_JEE-SNAPSHOT" : "Project_JEE" 
           nexusArtifactUploader artifacts: [
             [
                 artifactId: 'maven-project',
                 classifier: '',
-                file: "webapp/target/webapp-${mavenpom.version}.war",
+                file: "com/example/maven-project/webapp/1.0-SNAPSHOT/webapp-${mavenpom.version}.war",
                 type: 'war'
                 ]
             ],
             credentialsId: 'nexus',
             groupId: 'com.example.maven-project',
-            nexusUrl: '54.219.185.30:8081',
+            nexusUrl: '3.101.63.223:8081',
             nexusVersion: 'nexus3',
             protocol: 'http',
-            repository: 'nexusRepoName',
+            repository: 'javajee',
             version: "${mavenpom.version}"
         }
 
     }
 }
-
-    
     stage('Deploy') {
         steps {
             deploy adapters: [tomcat8(credentialsId: 'tomcat', 
@@ -123,21 +56,6 @@ stage('upload_artifact_to_nexus') {
             }
     }
     } 
-    //   post {
-
-    //  success {
-         
-    //      slackSend message: " Successful pipeline: Job ${env.JOB_NAME}, Build Jenkins N°: ${env.BUILD_NUMBER}: -To see more details,Check console output at:${env.BUILD_URL}"
-    
-    
-    // }
-    //       }
-
-     /*post {
-        always {
-            emailext body: 'A Test EMail', recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']], subject: 'Test'
-        }
-    }*/
 
       post {
         success {
